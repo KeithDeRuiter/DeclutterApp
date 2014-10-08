@@ -241,11 +241,11 @@ public class ClutterGroup {
         return coords;
     }
 
-    private Rectangle getSymbolRect(Track track){
+    public Rectangle getSymbolRect(Track track){
         return new Rectangle(track.getCoords().getX() - (Track.BOX_SIDE / 2), track.getCoords().getY() - (Track.BOX_SIDE / 2), Track.BOX_SIDE, Track.BOX_SIDE);
     }
 
-    private Rectangle getTextRect(Track track){
+    public Rectangle getTextRect(Track track){
         int width = m_fontMetrics.stringWidth(track.getName());
         int height = m_fontMetrics.getHeight();
         return new Rectangle(track.getRenderableText().getX(), track.getRenderableText().getY() - height, width, height);

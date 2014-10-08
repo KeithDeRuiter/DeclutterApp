@@ -8,7 +8,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 
 /**
  * The main object of the app.
@@ -17,7 +17,7 @@ import javax.swing.JScrollPane;
 public class App {
 
     public static final int FRAME_WIDTH = 1000;
-    public static final int FRAME_HEIGHT = 650;
+    public static final int FRAME_HEIGHT = 750;
     private JFrame m_frame;
     private Chart m_chart;
     private static final Dimension FRAME_DIM = new Dimension(FRAME_WIDTH, FRAME_HEIGHT);
@@ -27,14 +27,14 @@ public class App {
     }
 
     public void launch(){
-        generateTracks();
+        generateTracks(200);
         m_frame.pack();
         m_frame.setVisible(true);
     }
 
-    private void generateTracks(){
+    private void generateTracks(int qty){
         // # of tracks, region width, region height
-        m_chart.generateTracks(200, App.FRAME_WIDTH, App.FRAME_HEIGHT);
+        m_chart.generateTracks(qty, App.FRAME_WIDTH, App.FRAME_HEIGHT);
     }
 
     private void initialize(){
@@ -49,10 +49,11 @@ public class App {
 
         // Initialize and add the Chart
         m_chart = new Chart(true);
-        m_frame.add(new JScrollPane(m_chart), BorderLayout.CENTER);
+        m_frame.add(m_chart, BorderLayout.CENTER);
 
         // Initialize and add the control panel
         JPanel controlPanel = new JPanel(new BorderLayout());
+        
         final JCheckBox declutterBox = new JCheckBox("Declutter");
         declutterBox.addActionListener(new ActionListener(){
             @Override
@@ -60,18 +61,25 @@ public class App {
                 m_chart.setDeclutterEnabled(declutterBox.isSelected());
             }
         });
+                
         controlPanel.add(declutterBox, BorderLayout.LINE_END);
 
+        JPanel generationPanel = new JPanel();
+        final JTextField trackQuantityField = new JTextField(4);
+        generationPanel.add(trackQuantityField);
+        
         JButton button = new JButton("Regenerate Chart");
         button.addActionListener(new ActionListener(){
             @Override
             public void actionPerformed(ActionEvent e) {
-                generateTracks();
+                int qty = Integer.valueOf(trackQuantityField.getText());
+                generateTracks(qty);
             }
         });
-        controlPanel.add(button, BorderLayout.LINE_START);
+        generationPanel.add(button);
+        controlPanel.add(generationPanel, BorderLayout.LINE_START);
 
-        m_frame.add(controlPanel, BorderLayout.PAGE_END);
+        m_frame.add(controlPanel, BorderLayout.SOUTH);
     }
 
     /**@param blargs the command line arguments */

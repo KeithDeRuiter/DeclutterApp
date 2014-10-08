@@ -52,6 +52,15 @@ public class Coordinates {
         return m_y;
     }
 
+    public static double distance(Coordinates c1, Coordinates c2) {
+        return Math.hypot(c1.getX() - c2.getX(), c1.getY() - c2.getY());
+    }
+    
+    public void add(Coordinates other) {
+        m_x += other.getX();
+        m_y += other.getY();
+    }
+    
 
     /**
      * Generates and returns a {@link Collection} of {@link Coordinates} that includes all of the sets of Coordinates

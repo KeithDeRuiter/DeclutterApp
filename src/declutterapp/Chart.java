@@ -13,11 +13,17 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -157,9 +163,9 @@ public class Chart extends Component {
                 for(Track t : groupTracks) {    //Draw Rays to them
                     Coordinates trackCoords = t.getCoords();
                     g2d.setColor(Color.BLACK);
-                    g2d.drawLine(center.getX(), center.getY(), trackCoords.getX(), trackCoords.getY());
+                    //g2d.drawLine(center.getX(), center.getY(), trackCoords.getX(), trackCoords.getY());
                     
-                    double scaleFactor = 8.0;
+                    double scaleFactor = 30.0;
                     
                     double w = trackCoords.getX() - center.getX();
                     double h = trackCoords.getY() - center.getY();
@@ -174,10 +180,25 @@ public class Chart extends Component {
                     g2d.setColor(Color.RED);
                     g2d.drawLine(trackCoords.getX(), trackCoords.getY(), trackCoords.getX() + (int)scaledX, trackCoords.getY() + (int)scaledY);
                     
+                    //Get closest corner
                     AffineTransform at = g2d.getTransform();    //Store previous transform
-                    g2d.translate(scaledX, scaledY);
+                    //g2d.translate(scaledX - Track.BOX_SIDE, scaledY);    //Move out to end of projected line
+                    
+                    //Get label's bounding box
+                    Rectangle textRect = group.getTextRect(t);
+                    textRect.translate((int)scaledX - Track.BOX_SIDE, (int)scaledY);
+                    
+                    
+                    //Get closest corner
+                    Coordinates closestCorner = getClosestCorner(center, textRect);
+                    
+                    //Move to closest corner
+                    //g2d.translate(textRect.getX() - closestCorner.getX(), 0);
+//                    textRect.translate((int)textRect.getX() - closestCorner.getX(), (int)textRect.getY() - closestCorner.getY());
+                    textRect.translate(trackCoords.getX() + (int)scaledX - closestCorner.getX(), trackCoords.getY() + (int)scaledY - closestCorner.getY());
+                    
+                    g2d.drawRect(textRect.x, textRect.y, textRect.width, textRect.height);
                     //t.getRenderableText().render(g2d);
-                    g2d.fillOval(0, 0, 5, 5);
                     g2d.setTransform(at);
                 }
                 
@@ -206,6 +227,27 @@ public class Chart extends Component {
         }
     }
 
+    private Coordinates getClosestCorner(Coordinates center, Rectangle rect) {
+        final int cx = center.getX();
+        final int cy = center.getY();
+        List<Coordinates> corners = new ArrayList<>();
+        corners.add(new Coordinates(rect.x, rect.y));
+        corners.add(new Coordinates(rect.x + rect.width, rect.y));
+        corners.add(new Coordinates(rect.x, rect.y + rect.height));
+        corners.add(new Coordinates(rect.x + rect.width, rect.y + rect.height));
+        
+        Collections.sort(corners, new Comparator<Coordinates>() {
+            @Override
+            public int compare(Coordinates o1, Coordinates o2) {
+                double d1 = Point2D.distance(cx, cy, o1.getX(), o1.getY());
+                double d2 = Point2D.distance(cx, cy, o2.getX(), o2.getY());
+                return (d1 < d2) ? -1 : 1;
+            }
+        });
+        
+        return corners.get(0);
+    }
+    
     void generateTracks(int quantity, int regionWidth, int regionHeight) {
         clearTracks();
         repaint();
