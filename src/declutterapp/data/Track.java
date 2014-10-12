@@ -14,7 +14,8 @@ import java.util.UUID;
 public class Track {
 
     private final Coordinates m_coords;
-    private final Color m_color;
+    //private final Color m_color;
+    private final HostilityLevel m_hostility;
     private final String m_name;
     private final UUID m_id;
 
@@ -22,9 +23,9 @@ public class Track {
 
     private static final Random GENERATOR = new Random();
 
-    public Track(Coordinates coords, Color color, String name){
+    public Track(Coordinates coords, HostilityLevel hostility, String name){
         m_coords = coords;
-        m_color = color;
+        m_hostility = hostility;
         m_name = name;
         m_id = UUID.randomUUID();
     }
@@ -34,7 +35,7 @@ public class Track {
     }
 
     public Color getColor(){
-        return m_color;
+        return m_hostility.getColor();
     }
 
     public String getName(){
@@ -54,11 +55,11 @@ public class Track {
     }
 
     public RenderableText getRenderableText(){
-        return new RenderableText(getLabelCoords(), m_name, m_color, m_id);
+        return new RenderableText(getLabelCoords(), m_name, this.getColor(), m_id);
     }
 
     public RenderableSymbol getRenderabelSymbol(){
-        return new RenderableSymbol(m_coords, m_color, m_id);
+        return new RenderableSymbol(m_coords, this.getColor(), m_id);
     }
 
     public static Track newRandomTrack(int maxX, int maxY){
@@ -82,13 +83,53 @@ public class Track {
         if (y_coord < 15 && y_coord < (App.FRAME_HEIGHT - 15)){
             y_coord += 15;
         }
+        
         Coordinates coords = new Coordinates(x_coord, y_coord);
 
         // Color - limited to the range of darker colors.
-        int r = GENERATOR.nextInt(150);
-        int g = GENERATOR.nextInt(150);
-        int b = GENERATOR.nextInt(150);
+        //int r = GENERATOR.nextInt(150);
+        //int g = GENERATOR.nextInt(150);
+        //int b = GENERATOR.nextInt(150);
+        //Color color = new Color(r, g, b)
+        
+        HostilityLevel level = HostilityLevel.values()[GENERATOR.nextInt(HostilityLevel.values().length)];
 
-        return new Track(coords, new Color(r, g, b), trackName);
+        return new Track(coords, level, trackName);
+    }
+
+    public static Track newRandomTrack(int minX, int maxX, int minY, int maxY){
+
+        if (maxX > App.FRAME_WIDTH){
+            maxX = App.FRAME_WIDTH;
+        }
+        if (maxY > App.FRAME_HEIGHT){
+            maxY = App.FRAME_HEIGHT;
+        }
+        if (minX < 0) {
+            minX = 0;
+        }
+        if (minY < 0) {
+            minY = 0;
+        }
+
+        // Name
+        String trackName = "T" + GENERATOR.nextInt(1000);
+
+        // Coordinates
+        int x_coord = GENERATOR.nextInt(maxX - minX) + minX;
+        int y_coord = GENERATOR.nextInt(maxY - minY) + minY;
+        
+        Coordinates coords = new Coordinates(x_coord, y_coord);
+
+        // Color - limited to the range of darker colors.
+        //int r = GENERATOR.nextInt(150);
+        //int g = GENERATOR.nextInt(150);
+        //int b = GENERATOR.nextInt(150);
+        //Color color = new Color(r, g, b);
+        
+        HostilityLevel level = HostilityLevel.values()[GENERATOR.nextInt(HostilityLevel.values().length)];
+
+
+        return new Track(coords, level, trackName);
     }
 }

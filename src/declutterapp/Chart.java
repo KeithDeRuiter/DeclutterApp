@@ -54,6 +54,8 @@ public class Chart extends Component {
     private boolean m_declutterEnabled = false;
 
     private boolean m_drawClutterGroupBoundaries;
+    
+    private boolean m_drawLabelBounds = false;
 
     public Chart(){
         this(DEFAULT_DIM, false);
@@ -109,12 +111,44 @@ public class Chart extends Component {
         m_text.remove(track.getId());
     }
 
+    /**
+     * Enable or disable decluttering.
+     * @param enabled True to enable declutter, false to disable.
+     */
     public void setDeclutterEnabled(boolean enabled){
         m_declutterEnabled = enabled;
         if (enabled){
             System.out.println("Declutter enabled!");
         } else {
             System.out.println("Declutter disabled!");
+        }
+        repaint();
+    }
+
+    /**
+     * Enable or disable the drawing of boxes around labels.
+     * @param enabled True to enable, false to disable.
+     */
+    public void setLabelBoundsEnabled(boolean enabled){
+        m_drawLabelBounds = enabled;
+        if (enabled){
+            System.out.println("Drawing Label Bounds enabled!");
+        } else {
+            System.out.println("Drawing Label Bounds disabled!");
+        }
+        repaint();
+    }
+
+    /**
+     * Enable or disable the drawing of boxes around groups.
+     * @param enabled True to enable, false to disable.
+     */
+    public void setClutterGroupBoundsEnabled(boolean enabled){
+        m_drawClutterGroupBoundaries = enabled;
+        if (enabled){
+            System.out.println("Drawing Group Bounds enabled!");
+        } else {
+            System.out.println("Drawing Group Bounds disabled!");
         }
         repaint();
     }
@@ -167,6 +201,7 @@ public class Chart extends Component {
                     
                     double scaleFactor = 30.0;
                     
+                    //Get vector pointing to where we will push out the label=========
                     double w = trackCoords.getX() - center.getX();
                     double h = trackCoords.getY() - center.getY();
                     double length = Math.hypot(w, h);
@@ -177,35 +212,32 @@ public class Chart extends Component {
                     double scaledX = unitX * scaleFactor;
                     double scaledY = unitY * scaleFactor;
                     
-                    g2d.setColor(Color.RED);
+                    //Draw that leading line
+                    g2d.setColor(t.getColor());
                     g2d.drawLine(trackCoords.getX(), trackCoords.getY(), trackCoords.getX() + (int)scaledX, trackCoords.getY() + (int)scaledY);
                     
-                    //Get closest corner
+                    //Get closest corner and translate ===================================
+                    
                     AffineTransform at = g2d.getTransform();    //Store previous transform
-                    //g2d.translate(scaledX - Track.BOX_SIDE, scaledY);    //Move out to end of projected line
                     
                     //Get label's bounding box
                     Rectangle textRect = group.getTextRect(t);
-                    textRect.translate((int)scaledX - Track.BOX_SIDE, (int)scaledY);
-                    
+                    textRect.translate((int)scaledX - Track.BOX_SIDE, (int)scaledY);    //Move to end of leader line
                     
                     //Get closest corner
                     Coordinates closestCorner = getClosestCorner(center, textRect);
                     
                     //Move to closest corner
-                    //g2d.translate(textRect.getX() - closestCorner.getX(), 0);
-//                    textRect.translate((int)textRect.getX() - closestCorner.getX(), (int)textRect.getY() - closestCorner.getY());
                     textRect.translate(trackCoords.getX() + (int)scaledX - closestCorner.getX(), trackCoords.getY() + (int)scaledY - closestCorner.getY());
                     
-                    g2d.drawRect(textRect.x, textRect.y, textRect.width, textRect.height);
-                    //t.getRenderableText().render(g2d);
+                    if(m_drawLabelBounds) {
+                        g2d.drawRect(textRect.x, textRect.y, textRect.width, textRect.height);
+                    }
+                    g2d.translate(textRect.x - t.getRenderableText().getX(), textRect.y + textRect.height - t.getRenderableText().getY());
+                    t.getRenderableText().render(g2d);
                     g2d.setTransform(at);
                 }
                 
-//                // Draw Labels
-//                for (RenderableText text : m_text.values()){
-//                    text.render(g2d);
-//                }
 
                 // Draw Symbols
                 for (RenderableSymbol sym : m_symbols.values()){

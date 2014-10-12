@@ -34,7 +34,7 @@ public class App {
 
     private void generateTracks(int qty){
         // # of tracks, region width, region height
-        m_chart.generateTracks(qty, App.FRAME_WIDTH, App.FRAME_HEIGHT);
+        m_chart.generateTracks(qty, App.FRAME_WIDTH - 50, App.FRAME_HEIGHT - 50);
     }
 
     private void initialize(){
@@ -43,8 +43,8 @@ public class App {
         m_frame.setLayout(new BorderLayout());
         m_frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        m_frame.setMinimumSize(FRAME_DIM);
-        m_frame.setMaximumSize(FRAME_DIM);
+        //m_frame.setMinimumSize(FRAME_DIM);
+        //m_frame.setMaximumSize(FRAME_DIM);
         m_frame.setPreferredSize(FRAME_DIM);
 
         // Initialize and add the Chart
@@ -54,6 +54,30 @@ public class App {
         // Initialize and add the control panel
         JPanel controlPanel = new JPanel(new BorderLayout());
         
+        //Right side (options)
+        JPanel optionsPanel = new JPanel();
+        
+        //Declutter checkbox
+        final JCheckBox labelBoundsBox = new JCheckBox("Label Bounds");
+        labelBoundsBox.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                m_chart.setLabelBoundsEnabled(labelBoundsBox.isSelected());
+            }
+        });
+        optionsPanel.add(labelBoundsBox);
+        
+        //Declutter checkbox
+        final JCheckBox groupBoundsBox = new JCheckBox("Group Bounds");
+        groupBoundsBox.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                m_chart.setClutterGroupBoundsEnabled(groupBoundsBox.isSelected());
+            }
+        });
+        optionsPanel.add(groupBoundsBox);
+        
+        //Declutter checkbox
         final JCheckBox declutterBox = new JCheckBox("Declutter");
         declutterBox.addActionListener(new ActionListener(){
             @Override
@@ -61,9 +85,9 @@ public class App {
                 m_chart.setDeclutterEnabled(declutterBox.isSelected());
             }
         });
-                
-        controlPanel.add(declutterBox, BorderLayout.LINE_END);
+        optionsPanel.add(declutterBox);
 
+        //Left side (generation)
         JPanel generationPanel = new JPanel();
         final JTextField trackQuantityField = new JTextField(4);
         generationPanel.add(trackQuantityField);
@@ -77,6 +101,9 @@ public class App {
             }
         });
         generationPanel.add(button);
+        
+        //Add final two panels
+        controlPanel.add(optionsPanel, BorderLayout.LINE_END);
         controlPanel.add(generationPanel, BorderLayout.LINE_START);
 
         m_frame.add(controlPanel, BorderLayout.SOUTH);
