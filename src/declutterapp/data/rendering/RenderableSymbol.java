@@ -4,6 +4,7 @@ import declutterapp.data.Coordinates;
 import declutterapp.data.Track;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.util.UUID;
 
 /**
@@ -36,5 +37,15 @@ public class RenderableSymbol extends Renderable {
     public void render(Graphics2D g2d) {
         g2d.setColor(getColor());
         g2d.drawRect(m_point.getX() - (Track.BOX_SIDE / 2), m_point.getY() - (Track.BOX_SIDE / 2), Track.BOX_SIDE, Track.BOX_SIDE);
+    }
+
+    @Override
+    public Rectangle getBounds() {
+        return new Rectangle(m_point.getX() - (Track.BOX_SIDE / 2), m_point.getY() - (Track.BOX_SIDE / 2), Track.BOX_SIDE, Track.BOX_SIDE);
+    }
+
+    @Override
+    public void translate(int dx, int dy) {
+        m_point.translate(dx, dy);
     }
 }

@@ -3,6 +3,7 @@ package declutterapp.data.rendering;
 import declutterapp.data.Coordinates;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 
 /**
  *
@@ -10,7 +11,7 @@ import java.awt.Graphics2D;
  */
 public class RenderableBox extends Renderable {
     
-    private Coordinates m_center;
+    private Coordinates m_topLeft;
     private int m_width;
     private int m_height;
     
@@ -18,16 +19,35 @@ public class RenderableBox extends Renderable {
         this(Color.BLACK, center, width, height);
     }
     
-    public RenderableBox(Color color, Coordinates center, int width, int height){
+    public RenderableBox(Color color, Coordinates topLeft, int width, int height){
         super(color);
-        m_center = center;
+        m_topLeft = topLeft;
         m_width = width;
         m_height = height;
+    }
+    
+    public Coordinates getCenter() {
+        return new Coordinates(m_topLeft.getX() - (m_width / 2), m_topLeft.getY() - (m_height / 2));
+    }
+    
+    public static RenderableBox getBoxFromRectangle(Rectangle r) {
+        return new RenderableBox(new Coordinates(r.x, r.y), r.width, r.height);
     }
     
     @Override
     public void render(Graphics2D g2d) {
         g2d.setColor(getColor());
-        g2d.drawRect(m_center.getX(), m_center.getY(), m_width, m_height);
+        g2d.drawRect(m_topLeft.getX(), m_topLeft.getY(), m_width, m_height);
     }
+
+    @Override
+    public Rectangle getBounds() {
+        return new Rectangle(m_topLeft.getX(), m_topLeft.getY(), m_width, m_height);
+    }
+
+    @Override
+    public void translate(int dx, int dy) {
+        m_topLeft.translate(dx, dy);
+    }
+
 }

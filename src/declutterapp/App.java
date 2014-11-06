@@ -21,15 +21,18 @@ public class App {
     private JFrame m_frame;
     private Chart m_chart;
     private static final Dimension FRAME_DIM = new Dimension(FRAME_WIDTH, FRAME_HEIGHT);
-
-    public App(){
+    private int m_numTracks;
+    
+    public App(int initialNumTracks){
+        m_numTracks = initialNumTracks;
         initialize();
     }
 
     public void launch(){
-        generateTracks(200);
+        //generateTracks(m_numTracks);
         m_frame.pack();
         m_frame.setVisible(true);
+        //m_chart.initializeTextBounds();
     }
 
     private void generateTracks(int qty){
@@ -41,14 +44,14 @@ public class App {
         // Initialize Frame
         m_frame = new JFrame("Declutter Test App");
         m_frame.setLayout(new BorderLayout());
-        m_frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        m_frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         //m_frame.setMinimumSize(FRAME_DIM);
         //m_frame.setMaximumSize(FRAME_DIM);
         m_frame.setPreferredSize(FRAME_DIM);
 
         // Initialize and add the Chart
-        m_chart = new Chart(true);
+        m_chart = new Chart();
         m_frame.add(m_chart, BorderLayout.CENTER);
 
         // Initialize and add the control panel
@@ -57,7 +60,7 @@ public class App {
         //Right side (options)
         JPanel optionsPanel = new JPanel();
         
-        //Declutter checkbox
+        //label bounds checkbox
         final JCheckBox labelBoundsBox = new JCheckBox("Label Bounds");
         labelBoundsBox.addActionListener(new ActionListener(){
             @Override
@@ -67,7 +70,7 @@ public class App {
         });
         optionsPanel.add(labelBoundsBox);
         
-        //Declutter checkbox
+        //group bounds checkbox
         final JCheckBox groupBoundsBox = new JCheckBox("Group Bounds");
         groupBoundsBox.addActionListener(new ActionListener(){
             @Override
@@ -75,7 +78,6 @@ public class App {
                 m_chart.setClutterGroupBoundsEnabled(groupBoundsBox.isSelected());
             }
         });
-        optionsPanel.add(groupBoundsBox);
         
         //Declutter checkbox
         final JCheckBox declutterBox = new JCheckBox("Declutter");
@@ -85,22 +87,49 @@ public class App {
                 m_chart.setDeclutterEnabled(declutterBox.isSelected());
             }
         });
+        
+        //shuffle checkbox
+        final JCheckBox shuffleBox = new JCheckBox("Shuffle");
+        shuffleBox.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                m_chart.setShuffleEnabled(shuffleBox.isSelected());
+                m_chart.setDeclutterEnabled(true);
+                declutterBox.setSelected(true);
+            }
+        });
+        
+        optionsPanel.add(groupBoundsBox);
+        optionsPanel.add(shuffleBox);
         optionsPanel.add(declutterBox);
 
         //Left side (generation)
         JPanel generationPanel = new JPanel();
-        final JTextField trackQuantityField = new JTextField(4);
+        final JTextField trackQuantityField = new JTextField(String.valueOf(m_numTracks), 4);
         generationPanel.add(trackQuantityField);
         
         JButton button = new JButton("Regenerate Chart");
         button.addActionListener(new ActionListener(){
             @Override
             public void actionPerformed(ActionEvent e) {
-                int qty = Integer.valueOf(trackQuantityField.getText());
-                generateTracks(qty);
+                try {
+                    m_numTracks = Integer.valueOf(trackQuantityField.getText());
+                } catch (NumberFormatException ex) {
+                    //Do nothing, m_numTracks remains the same
+                }
+                generateTracks(m_numTracks);
             }
         });
         generationPanel.add(button);
+        
+        JButton repaintButton = new JButton("Repaint Chart");
+        repaintButton.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                m_chart.repaint();
+            }
+        });
+        generationPanel.add(repaintButton);
         
         //Add final two panels
         controlPanel.add(optionsPanel, BorderLayout.LINE_END);
@@ -109,9 +138,4 @@ public class App {
         m_frame.add(controlPanel, BorderLayout.SOUTH);
     }
 
-    /**@param blargs the command line arguments */
-    public static void main(String[] blargs){
-        App app = new App();
-        app.launch();
-    }
 }

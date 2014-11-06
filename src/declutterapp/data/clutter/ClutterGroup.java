@@ -3,17 +3,21 @@ package declutterapp.data.clutter;
 import declutterapp.data.Coordinates;
 import declutterapp.data.Track;
 import declutterapp.data.rendering.Renderable;
-import java.awt.FontMetrics;
+import declutterapp.data.rendering.RenderableSymbol;
+import declutterapp.data.rendering.RenderableText;
 import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  *
@@ -22,8 +26,10 @@ import java.util.Set;
 public class ClutterGroup {
 
     private final Set<Track> m_tracks;
-
-    private final FontMetrics m_fontMetrics;
+    
+    private final Map<UUID, RenderableText> m_texts;
+    
+    private final Map<UUID, RenderableSymbol> m_symbols;
 
     private Rectangle m_rect;
     
@@ -31,55 +37,45 @@ public class ClutterGroup {
 
     private Polygon m_polygon;
 
-    public ClutterGroup(FontMetrics fontMetrics){
+    public ClutterGroup(){
         m_tracks = new HashSet<>();
-        m_fontMetrics = fontMetrics;
+        m_texts = new HashMap<>();
+        m_symbols = new HashMap<>();
         m_polygon = null;
         m_rect = null;
         m_currentRectIncludesLabels = true;
     }
 
+
+    public void addTrack(Track track, RenderableSymbol symbol, RenderableText label){
+        m_tracks.add(track);
+        m_symbols.put(track.getId(), symbol);
+        m_texts.put(track.getId(), label);
+        m_polygon = null;
+    }
+
+    public void addTracks(Collection<Track> tracks, Map<UUID, RenderableSymbol> symbols, Map<UUID, RenderableText> labels){
+        m_tracks.addAll(tracks);
+        m_symbols.putAll(symbols);
+        m_texts.putAll(labels);
+        m_polygon = null;
+    }
+    
     public Set<Track> getTracks(){
         return Collections.unmodifiableSet(m_tracks);
     }
 
-    public void addTrack(Track track){
-        m_tracks.add(track);
-        m_polygon = null;
+    public Map<UUID, RenderableText> getTexts(){
+        return Collections.unmodifiableMap(m_texts);
     }
-
-    public void addTracks(Collection<Track> tracks){
-        m_tracks.addAll(tracks);
-        m_polygon = null;
+    
+    public Map<UUID, RenderableSymbol> getSymbols() {
+        return Collections.unmodifiableMap(m_symbols);
     }
+    
 
-    public boolean hasIntersection(Track track){
-//        for (Track trk : m_tracks){
-//            //System.out.println("Checking " + track.getName() + " against " + trk.getName());
-//            // If the symbol or the text rectangles overlay on either of these tracks in any combination, they intersect
-//            if (getSymbolRect(track).intersects(getSymbolRect(trk))){
-//                //System.out.println("Overlap detected for " + track.getName() + " and " + trk.getName());
-//                return true;
-//            } else if (getSymbolRect(track).intersects(getTextRect(trk))){
-//                //System.out.println("Overlap detected for " + track.getName() + " and " + trk.getName());
-//                return true;
-//            } else if (getTextRect(track).intersects(getSymbolRect(trk))){
-//                //System.out.println("Overlap detected for " + track.getName() + " and " + trk.getName());
-//                return true;
-//            } else if (getTextRect(track).intersects(getTextRect(trk))){
-//                //System.out.println("Overlap detected for " + track.getName() + " and " + trk.getName());
-//                return true;
-//            }
-//        }
-//        return false;
-
-        if (calculateGroupPolygon(true).intersects(getSymbolRect(track))){
-            return true;
-        }
-        if (calculateGroupPolygon(true).intersects(getTextRect(track))){
-            return true;
-        }
-        return false;
+    public boolean hasIntersection(Renderable renderable){
+        return calculateGroupRect(true).intersects(renderable.getBounds());
     }
 
     public int getSize(){
@@ -90,57 +86,6 @@ public class ClutterGroup {
         for (Track track : m_tracks){
             System.out.println("   " + track.getName());
         }
-    }
-
-    public Polygon calculateGroupPolygon(boolean includeLabels){
-        if (m_polygon == null){
-
-            Polygon polygon = new Polygon();
-
-            List<Coordinates> coords = new ArrayList<>(getAllRenderableVertices(includeLabels));
-            XComparator xComp = new XComparator();
-            YComparator yComp = new YComparator();
-
-            Collections.sort(coords, xComp);
-            // Get and add all of the left most points
-            int leftMostX = coords.get(0).getX();
-            for (int i = 0; coords.get(i).getX() == leftMostX; i++){
-                polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
-            }
-
-            // get and add all of the upper most points
-            Collections.sort(coords, yComp);
-            int topMost = coords.get(0).getX();
-            for (int i = 0; coords.get(i).getX() == topMost; i++){
-                polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
-            }
-
-            // get and add all of the right most points
-            Collections.sort(coords, xComp);
-            Collections.reverse(coords);
-            List<Coordinates> rightMostPts = new ArrayList<>();
-            int rightMost = coords.get(0).getX();
-            for (int i = 0; coords.get(i).getX() == rightMost; i++){
-                rightMostPts.add(new Coordinates(coords.get(i).getX(), coords.get(i).getY()));
-                //polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
-            }
-            Collections.reverse(rightMostPts);
-            for (Coordinates crds : rightMostPts){
-                polygon.addPoint(crds.getX(), crds.getY());
-            }
-
-            //get and add all of the lower most points
-            Collections.sort(coords, yComp);
-            Collections.reverse(coords);
-            int lowerMost = coords.get(0).getX();
-            for (int i = 0; coords.get(i).getX() == lowerMost; i++){
-                polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
-            }
-
-            m_polygon = polygon;
-        }
-
-        return m_polygon;
     }
 
     public Rectangle calculateGroupRect(boolean includeLabels){
@@ -155,7 +100,59 @@ public class ClutterGroup {
         }
         return m_rect;
     }
-
+    
+//    public Polygon calculateGroupPolygon(boolean includeLabels){
+//        if (m_polygon == null){
+//
+//            Polygon polygon = new Polygon();
+//
+//            List<Coordinates> coords = new ArrayList<>(getAllRenderableVertices(includeLabels));
+//            XComparator xComp = new XComparator();
+//            YComparator yComp = new YComparator();
+//
+//            Collections.sort(coords, xComp);
+//            // Get and add all of the left most points
+//            int leftMostX = coords.get(0).getX();
+//            for (int i = 0; coords.get(i).getX() == leftMostX; i++){
+//                polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
+//            }
+//
+//            // get and add all of the upper most points
+//            Collections.sort(coords, yComp);
+//            int topMost = coords.get(0).getX();
+//            for (int i = 0; coords.get(i).getX() == topMost; i++){
+//                polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
+//            }
+//
+//            // get and add all of the right most points
+//            Collections.sort(coords, xComp);
+//            Collections.reverse(coords);
+//            List<Coordinates> rightMostPts = new ArrayList<>();
+//            int rightMost = coords.get(0).getX();
+//            for (int i = 0; coords.get(i).getX() == rightMost; i++){
+//                rightMostPts.add(new Coordinates(coords.get(i).getX(), coords.get(i).getY()));
+//                //polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
+//            }
+//            Collections.reverse(rightMostPts);
+//            for (Coordinates crds : rightMostPts){
+//                polygon.addPoint(crds.getX(), crds.getY());
+//            }
+//
+//            //get and add all of the lower most points
+//            Collections.sort(coords, yComp);
+//            Collections.reverse(coords);
+//            int lowerMost = coords.get(0).getX();
+//            for (int i = 0; coords.get(i).getX() == lowerMost; i++){
+//                polygon.addPoint(coords.get(i).getX(), coords.get(i).getY());
+//            }
+//
+//            m_polygon = polygon;
+//        }
+//
+//        return m_polygon;
+//    }
+//
+//
     /**
      * Helper to get the XY Values of all of the {@link Renderable}s in the clutter group.
      * @param includeLabels true if the labels are to be included in this calculation, false otherwise.
@@ -166,7 +163,9 @@ public class ClutterGroup {
             List<Integer> yValues = new ArrayList<>();
 
             for (Track track : m_tracks){
-                Rectangle symbol = getSymbolRect(track);
+                UUID id = track.getId();
+                RenderableSymbol s = m_symbols.get(id);
+                Rectangle symbol = s.getBounds();
                 int centerX = (int)symbol.getCenterX();
                 int centerY = (int)symbol.getCenterY();
 
@@ -179,7 +178,7 @@ public class ClutterGroup {
                 yValues.add(centerY + (int)(symbol.getHeight() / 2));
 
                 if (includeLabels){
-                    Rectangle text = getTextRect(track);
+                    Rectangle text = m_texts.get(track.getId()).getBounds();
 
                     centerX = (int)text.getCenterX();
                     centerY = (int)text.getCenterY();
@@ -200,56 +199,58 @@ public class ClutterGroup {
 
             return new SortedXyValues(xValues, yValues);
     }
+//
+//    private Collection<Coordinates> getAllRenderableVertices(boolean includeLabels){
+//        Collection<Coordinates> coords = new HashSet<>();
+//
+//        for (Track track : m_tracks){
+//            Rectangle symbol = getSymbolRect(track);
+//            int centerX = (int)symbol.getCenterX();
+//            int centerY = (int)symbol.getCenterY();
+//
+//            int leftX = centerX - (int)(symbol.getWidth() / 2);
+//            int rightX = centerX + (int)(symbol.getWidth() / 2);
+//
+//            int topY = centerY - (int)(symbol.getHeight() / 2);
+//            int bottomY = centerY + (int)(symbol.getHeight() / 2);
+//
+//            coords.add(new Coordinates(leftX, topY));
+//            coords.add(new Coordinates(leftX, bottomY));
+//            coords.add(new Coordinates(rightX, topY));
+//            coords.add(new Coordinates(rightX, bottomY));
+//
+//            if (includeLabels){
+//                Rectangle textRect = getTextRectForTrack(track);
+//                int tCenterX = (int)textRect.getCenterX();
+//                int tCenterY = (int)textRect.getCenterY();
+//
+//                int tLeftX = tCenterX - (int)(textRect.getWidth() / 2);
+//                int tRightX = tCenterX + (int)(textRect.getWidth() / 2);
+//
+//                int textTopY = tCenterY - (int)(textRect.getHeight() / 2);
+//                int textBottomY = tCenterY + (int)(textRect.getHeight() / 2);
+//
+//                coords.add(new Coordinates(tLeftX, textTopY));
+//                coords.add(new Coordinates(tLeftX, textBottomY));
+//                coords.add(new Coordinates(tRightX, textTopY));
+//                coords.add(new Coordinates(tRightX, textBottomY));
+//            }
+//        }
+//
+//        return coords;
+//    }
 
-    private Collection<Coordinates> getAllRenderableVertices(boolean includeLabels){
-        Collection<Coordinates> coords = new HashSet<>();
+//    public Rectangle getSymbolRect(Track track){
+//        return new Rectangle(track.getCoords().getX() - (Track.BOX_SIDE / 2), track.getCoords().getY() - (Track.BOX_SIDE / 2), Track.BOX_SIDE, Track.BOX_SIDE);
+//    }
 
-        for (Track track : m_tracks){
-            Rectangle symbol = getSymbolRect(track);
-            int centerX = (int)symbol.getCenterX();
-            int centerY = (int)symbol.getCenterY();
+//    public Rectangle getTextRectForTrack(Track track){
+//        int width = m_fontMetrics.stringWidth(track.getName());
+//        int height = m_fontMetrics.getHeight();
+//        return new Rectangle(track.getNewRenderableText().getX(), track.getNewRenderableText().getY() - height, width, height);
+//    }
+    
 
-            int leftX = centerX - (int)(symbol.getWidth() / 2);
-            int rightX = centerX + (int)(symbol.getWidth() / 2);
-
-            int topY = centerY - (int)(symbol.getHeight() / 2);
-            int bottomY = centerY + (int)(symbol.getHeight() / 2);
-
-            coords.add(new Coordinates(leftX, topY));
-            coords.add(new Coordinates(leftX, bottomY));
-            coords.add(new Coordinates(rightX, topY));
-            coords.add(new Coordinates(rightX, bottomY));
-
-            if (includeLabels){
-                Rectangle textRect = getTextRect(track);
-                int tCenterX = (int)textRect.getCenterX();
-                int tCenterY = (int)textRect.getCenterY();
-
-                int tLeftX = tCenterX - (int)(textRect.getWidth() / 2);
-                int tRightX = tCenterX + (int)(textRect.getWidth() / 2);
-
-                int textTopY = tCenterY - (int)(textRect.getHeight() / 2);
-                int textBottomY = tCenterY + (int)(textRect.getHeight() / 2);
-
-                coords.add(new Coordinates(tLeftX, textTopY));
-                coords.add(new Coordinates(tLeftX, textBottomY));
-                coords.add(new Coordinates(tRightX, textTopY));
-                coords.add(new Coordinates(tRightX, textBottomY));
-            }
-        }
-
-        return coords;
-    }
-
-    public Rectangle getSymbolRect(Track track){
-        return new Rectangle(track.getCoords().getX() - (Track.BOX_SIDE / 2), track.getCoords().getY() - (Track.BOX_SIDE / 2), Track.BOX_SIDE, Track.BOX_SIDE);
-    }
-
-    public Rectangle getTextRect(Track track){
-        int width = m_fontMetrics.stringWidth(track.getName());
-        int height = m_fontMetrics.getHeight();
-        return new Rectangle(track.getRenderableText().getX(), track.getRenderableText().getY() - height, width, height);
-    }
 
     @Override
     public int hashCode() {

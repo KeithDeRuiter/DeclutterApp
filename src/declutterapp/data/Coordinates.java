@@ -52,6 +52,16 @@ public class Coordinates {
         return m_y;
     }
 
+    public void setX(int x) {
+        this.m_x = x;
+    }
+
+    public void setY(int y) {
+        this.m_y = y;
+    }
+
+    
+    
     public static double distance(Coordinates c1, Coordinates c2) {
         return Math.hypot(c1.getX() - c2.getX(), c1.getY() - c2.getY());
     }
@@ -59,6 +69,11 @@ public class Coordinates {
     public void add(Coordinates other) {
         m_x += other.getX();
         m_y += other.getY();
+    }
+    
+    public void translate(int dx, int dy) {
+        m_x += dx;
+        m_y += dy;
     }
     
 

@@ -2,7 +2,9 @@ package declutterapp.data.rendering;
 
 import declutterapp.data.Coordinates;
 import java.awt.Color;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.util.UUID;
 
 /**
@@ -12,14 +14,17 @@ import java.util.UUID;
 public class RenderableText extends Renderable {
 
     private final String m_text;
-    private final Coordinates m_coords;
+    private Coordinates m_coords;
     private final UUID m_id;
 
-    public RenderableText(Coordinates coords, String text, Color color, UUID trackGuid){
+    private final FontMetrics m_fontMetrics;
+    
+    public RenderableText(Coordinates coords, String text, Color color, UUID trackGuid, FontMetrics fm){
         super(color);
         m_text = text;
         m_coords = coords;
         m_id = trackGuid;
+        m_fontMetrics = fm;
     }
 
     public String getText(){
@@ -33,7 +38,22 @@ public class RenderableText extends Renderable {
     public int getY(){
         return m_coords.getY();
     }
+    
+    public void setCoords(int x, int y) {
+        m_coords.setX(x);
+        m_coords.setY(y);
+    }
+    
+    public void setCoords(Coordinates coords) {
+        m_coords = coords;
+    }
 
+    @Override
+    public void translate(int x, int y) {
+        m_coords.setX(getX() + x);
+        m_coords.setY(getY() + y);
+    }
+    
     public UUID getId(){
         return m_id;
     }
@@ -42,5 +62,16 @@ public class RenderableText extends Renderable {
     public void render(Graphics2D g2d) {
         g2d.setColor(getColor());
         g2d.drawString(m_text, m_coords.getX(), m_coords.getY());
+//        g2d.setColor(Color.ORANGE);
+//        Rectangle b = getBounds();
+//        g2d.drawRect(b.x, b.y, b.width, b.height);
+    }
+
+    
+    @Override
+    public Rectangle getBounds() {
+        int width = m_fontMetrics.stringWidth(getText());
+        int height = m_fontMetrics.getHeight();
+        return new Rectangle(getX(), getY() - height, width, height);
     }
 }

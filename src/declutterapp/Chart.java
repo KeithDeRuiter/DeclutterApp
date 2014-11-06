@@ -11,22 +11,21 @@ import declutterapp.data.rendering.RenderableText;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Polygon;
 import java.awt.Rectangle;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Point2D;
-import java.util.ArrayList;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 
 /**
@@ -35,13 +34,15 @@ import java.util.UUID;
  */
 public class Chart extends Component {
 
-    private Set<Track> m_tracks;
+    private Set<Track> m_tracks;    //TODO prevent concurrent modification if you generate at launch as paint is undoing declutter
 
     private Map<UUID, RenderableSymbol> m_symbols;
 
     private Map<UUID, RenderableText> m_text;
 
     private Set<RenderableLine> m_lines;
+    
+    private Set<RenderableBox> m_groupBounds;
 
     private TrackRenderableConverter m_renderableConverter;
 
@@ -52,33 +53,61 @@ public class Chart extends Component {
     private DeclutterProcessor m_declutterProcessor;
 
     private boolean m_declutterEnabled = false;
+    
+    private boolean m_shuffleEnabled = false;
 
-    private boolean m_drawClutterGroupBoundaries;
+    private boolean m_drawClutterGroupBoundaries = false;
     
     private boolean m_drawLabelBounds = false;
+    
+    private final ExecutorService m_singleThreadExecutor = Executors.newSingleThreadExecutor();
+    
+    private final ScheduledExecutorService m_redrawExecutor = Executors.newSingleThreadScheduledExecutor();
 
     public Chart(){
-        this(DEFAULT_DIM, false);
+        this(DEFAULT_DIM);
     }
 
-    public Chart(boolean drawClutterGroupBoxes){
-        this(DEFAULT_DIM, drawClutterGroupBoxes);
-    }
-
-    public Chart(Dimension size, boolean drawClutterGroupBoxes){
+    public Chart(Dimension size){
 
         setPreferredSize(size);
         setMinimumSize(size);
         setMaximumSize(size);
+        
+        this.addMouseListener(new MouseListener() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                addTrack(Track.newRandomTrackAtCoords(e.getX(), e.getY()));
+                if(m_declutterEnabled) {
+                    performDeclutter();
+                } else {
+                    repaint();
+                }
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+            }
+        });
 
         m_tracks = new HashSet<>();
 
         m_lines = new HashSet<>();
         m_symbols = new HashMap<>();
         m_text = new HashMap<>();
-        m_renderableConverter = new TrackRenderableConverter();
-
-        m_drawClutterGroupBoundaries = drawClutterGroupBoxes;
+        m_groupBounds = new HashSet<>();
     }
 
     /**
@@ -97,6 +126,8 @@ public class Chart extends Component {
         m_tracks.clear();
         m_text.clear();
         m_symbols.clear();
+        m_groupBounds.clear();
+        m_lines.clear();
     }
 
     public void addTrack(Track track){
@@ -111,6 +142,7 @@ public class Chart extends Component {
         m_text.remove(track.getId());
     }
 
+    
     /**
      * Enable or disable decluttering.
      * @param enabled True to enable declutter, false to disable.
@@ -118,9 +150,44 @@ public class Chart extends Component {
     public void setDeclutterEnabled(boolean enabled){
         m_declutterEnabled = enabled;
         if (enabled){
+            m_singleThreadExecutor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    performDeclutter();
+                }
+            });
+            
             System.out.println("Declutter enabled!");
         } else {
+            m_singleThreadExecutor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    // Initialize a processor if necessary.
+                    if (m_declutterProcessor == null){
+                        m_declutterProcessor = new DeclutterProcessor();
+                    }
+                    //Back to a clean slate
+                    m_declutterProcessor.undoDeclutter(m_tracks, m_symbols, m_text, m_lines);
+                    m_groupBounds.clear();
+                }
+            });
+
+            
             System.out.println("Declutter disabled!");
+        }
+        repaint();
+    }
+
+    /**
+     * Enable or disable shuffling.
+     * @param enabled True to enable shuffle in declutter, false to disable.
+     */
+    public void setShuffleEnabled(boolean enabled){
+        m_shuffleEnabled = enabled;
+        if (enabled){
+            System.out.println("Shuffle enabled!");
+        } else {
+            System.out.println("Shuffle disabled!");
         }
         repaint();
     }
@@ -153,138 +220,86 @@ public class Chart extends Component {
         repaint();
     }
 
+    
+    private void performDeclutter() {
+        // Initialize a processor if necessary.
+        if (m_declutterProcessor == null){
+            m_declutterProcessor = new DeclutterProcessor();
+        }
+        
+        //Start from a clean slate
+        m_declutterProcessor.undoDeclutter(m_tracks, m_symbols, m_text, m_lines);
+
+        m_declutterProcessor.setShuffle(m_shuffleEnabled);
+        Collection<ClutterGroup> groups = m_declutterProcessor.performDeclutter(m_tracks, m_symbols, m_text, m_lines);
+
+        //Generate box for each group
+        for (ClutterGroup group : groups){
+            Rectangle groupRect = group.calculateGroupRect(true);
+            Coordinates coords = new Coordinates(groupRect.x, groupRect.y);
+            RenderableBox box = new RenderableBox(coords, groupRect.width, groupRect.height);
+            m_groupBounds.add(box);
+        }
+        
+        repaint();
+    }
+    
+    
     /** {@inheritDoc} */
     @Override
     public void paint(Graphics g){
         Graphics2D g2d = (Graphics2D)g;
 
+        //Initialize font metrics
+        if(m_renderableConverter == null) {
+            FontMetrics fm = g2d.getFontMetrics();
+            m_renderableConverter = new TrackRenderableConverter(fm);
+        }
+        
         // Draw Background
         g2d.setColor(m_oceanColor);
         g2d.fillRect(0, 0, getSize().width, getSize().height);
 
-        if (m_declutterEnabled){
-            //  Remvoe the old generated data.
-            //m_tracks.clear();
-            //m_text.clear();
+ 
+        //DRAW STUFF FOR TRACKS ============================
+        
+        // Draw Labels, symbols, text
+        for (RenderableText text : m_text.values()){
+            text.render(g2d);
+        }
 
-            // Initialize a processor if necessary.
-            if (m_declutterProcessor == null){
-                m_declutterProcessor = new DeclutterProcessor(g2d.getFontMetrics());
-            }
+        for (RenderableSymbol sym : m_symbols.values()){
+            sym.render(g2d);
+        }
 
-            Collection<ClutterGroup> groups = m_declutterProcessor.performDeclutter(m_tracks, m_symbols, m_text, m_lines);
-
-            if (m_drawClutterGroupBoundaries){
-                //Render box for each group
-                for (ClutterGroup group : groups){
-                    Rectangle groupRect = group.calculateGroupRect(false);
-                    Coordinates coords = new Coordinates(groupRect.x, groupRect.y);
-                    RenderableBox box = new RenderableBox(coords, groupRect.width, groupRect.height);
-                    box.render(g2d);
-                }
-//                for (ClutterGroup group : groups){
-//                    Polygon polygon = group.calculateGroupPolygon(true);
-//                    RenderablePolygon rPoly = new RenderablePolygon(polygon);
-//                    rPoly.render(g2d);
-//                }
-            }
-            
-            //Draw the things in each clutter group TODO - combine with previous loop over group
-            for (ClutterGroup group : groups) {
-                Set<Track> groupTracks = group.getTracks(); //Get Tracks in this group
-                Rectangle groupRect = group.calculateGroupRect(false);
-                Coordinates center = new Coordinates((int)groupRect.getCenterX(), (int)groupRect.getCenterY());
-                for(Track t : groupTracks) {    //Draw Rays to them
-                    Coordinates trackCoords = t.getCoords();
-                    g2d.setColor(Color.BLACK);
-                    //g2d.drawLine(center.getX(), center.getY(), trackCoords.getX(), trackCoords.getY());
-                    
-                    double scaleFactor = 30.0;
-                    
-                    //Get vector pointing to where we will push out the label=========
-                    double w = trackCoords.getX() - center.getX();
-                    double h = trackCoords.getY() - center.getY();
-                    double length = Math.hypot(w, h);
-                                        
-                    double unitX = w / length;
-                    double unitY = h / length;
-                    
-                    double scaledX = unitX * scaleFactor;
-                    double scaledY = unitY * scaleFactor;
-                    
-                    //Draw that leading line
-                    g2d.setColor(t.getColor());
-                    g2d.drawLine(trackCoords.getX(), trackCoords.getY(), trackCoords.getX() + (int)scaledX, trackCoords.getY() + (int)scaledY);
-                    
-                    //Get closest corner and translate ===================================
-                    
-                    AffineTransform at = g2d.getTransform();    //Store previous transform
-                    
-                    //Get label's bounding box
-                    Rectangle textRect = group.getTextRect(t);
-                    textRect.translate((int)scaledX - Track.BOX_SIDE, (int)scaledY);    //Move to end of leader line
-                    
-                    //Get closest corner
-                    Coordinates closestCorner = getClosestCorner(center, textRect);
-                    
-                    //Move to closest corner
-                    textRect.translate(trackCoords.getX() + (int)scaledX - closestCorner.getX(), trackCoords.getY() + (int)scaledY - closestCorner.getY());
-                    
-                    if(m_drawLabelBounds) {
-                        g2d.drawRect(textRect.x, textRect.y, textRect.width, textRect.height);
-                    }
-                    g2d.translate(textRect.x - t.getRenderableText().getX(), textRect.y + textRect.height - t.getRenderableText().getY());
-                    t.getRenderableText().render(g2d);
-                    g2d.setTransform(at);
-                }
-                
-
-                // Draw Symbols
-                for (RenderableSymbol sym : m_symbols.values()){
-                    sym.render(g2d);
-                }
-                
-            }
-            
-        } else {
-            // Draw Labels
-            for (RenderableText text : m_text.values()){
-                text.render(g2d);
-            }
-
-            // Draw Symbols
-            for (RenderableSymbol sym : m_symbols.values()){
-                sym.render(g2d);
+        for (RenderableLine line : m_lines) {
+            line.render(g2d);
+        }
+        
+        if(m_drawClutterGroupBoundaries) {
+            for(RenderableBox box : m_groupBounds) {
+                box.render(g2d);
             }
         }
-    }
-
-    private Coordinates getClosestCorner(Coordinates center, Rectangle rect) {
-        final int cx = center.getX();
-        final int cy = center.getY();
-        List<Coordinates> corners = new ArrayList<>();
-        corners.add(new Coordinates(rect.x, rect.y));
-        corners.add(new Coordinates(rect.x + rect.width, rect.y));
-        corners.add(new Coordinates(rect.x, rect.y + rect.height));
-        corners.add(new Coordinates(rect.x + rect.width, rect.y + rect.height));
         
-        Collections.sort(corners, new Comparator<Coordinates>() {
-            @Override
-            public int compare(Coordinates o1, Coordinates o2) {
-                double d1 = Point2D.distance(cx, cy, o1.getX(), o1.getY());
-                double d2 = Point2D.distance(cx, cy, o2.getX(), o2.getY());
-                return (d1 < d2) ? -1 : 1;
-            }
-        });
-        
-        return corners.get(0);
+        g2d.setColor(Color.MAGENTA);
+        for(int i = 0; i < this.getWidth(); i+=100) { //draw verticals
+            g2d.drawLine(i, 0, i, this.getHeight());
+        }
+        for(int i = 0; i < this.getHeight(); i+=100) { //draw horizontals
+            g2d.drawLine(0, i, this.getWidth(), i);
+        }
     }
     
     void generateTracks(int quantity, int regionWidth, int regionHeight) {
         clearTracks();
-        repaint();
         for (int i = 0; i < quantity; i++){
-            addTrack(Track.newRandomTrack(regionWidth, regionHeight));
+            addTrack(Track.newRandomTrack(0, regionWidth, 0, regionHeight));
+        }
+        if(m_declutterEnabled) {
+            performDeclutter(); //Declutters and then calls repaint
+        } else {
+            repaint();
         }
     }
 }
