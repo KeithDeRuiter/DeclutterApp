@@ -89,7 +89,7 @@ public class ClutterGroup {
     }
 
     public Rectangle calculateGroupRect(boolean includeLabels){
-        if (m_rect == null || m_currentRectIncludesLabels != includeLabels){
+        //if (m_rect == null || m_currentRectIncludesLabels != includeLabels){
             SortedXyValues xyValues = getSortedXyValues(includeLabels);
 
             int width = xyValues.m_xValues.get(xyValues.m_xValues.size() - 1) - xyValues.m_xValues.get(0);
@@ -97,7 +97,7 @@ public class ClutterGroup {
 
             m_currentRectIncludesLabels = includeLabels;
             m_rect = new Rectangle(xyValues.m_xValues.get(0), xyValues.m_yValues.get(0), width, height);
-        }
+        //}
         return m_rect;
     }
     

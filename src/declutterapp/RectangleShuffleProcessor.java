@@ -7,6 +7,7 @@ import declutterapp.data.rendering.RenderableBox;
 import declutterapp.data.rendering.RenderableLine;
 import declutterapp.data.rendering.RenderableSymbol;
 import declutterapp.data.rendering.RenderableText;
+import java.awt.Color;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -68,7 +69,7 @@ public class RectangleShuffleProcessor {
                             }
                             
                             
-                        } else if (text.getBounds().intersects(otherGroupRect)) {   //Collision with other group
+                        } else if (text.getBounds().intersects(otherGroupRect)) {   //Collision with other group, make fake box to hold bounds
                             collisions.add(new Collision(text, RenderableBox.getBoxFromRectangle(otherGroupRect), true));
                         }
                     }
@@ -198,10 +199,10 @@ public class RectangleShuffleProcessor {
 //        }
 
         // Calculate restitution, set to 1 here since bounciness doesn't matter
-        float e = 100;
+        //float e = 100;
 
         // Calculate impulse scalar    
-        float j = 5;
+        float j = 15;
         //float j = -(1 + e) * velAlongNormal;
         //j /= (1 / A.mass) + (1 / B.mass);
 

@@ -79,9 +79,9 @@ public class Chart extends Component {
             public void mouseReleased(MouseEvent e) {
                 addTrack(Track.newRandomTrackAtCoords(e.getX(), e.getY()));
                 if(m_declutterEnabled) {
-                    performDeclutter();
+                    handleDeclutter();
                 } else {
-                    repaint();
+                    handleUndoDeclutter();
                 }
             }
 
@@ -108,6 +108,8 @@ public class Chart extends Component {
         m_symbols = new HashMap<>();
         m_text = new HashMap<>();
         m_groupBounds = new HashSet<>();
+        
+        m_declutterProcessor = new DeclutterProcessor();
     }
 
     /**
@@ -143,6 +145,31 @@ public class Chart extends Component {
     }
 
     
+    private void handleDeclutter() {
+        m_singleThreadExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                performDeclutter();
+            }
+        });
+    }
+    
+    private void handleUndoDeclutter() {
+        m_singleThreadExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                // Initialize a processor if necessary.
+                if (m_declutterProcessor == null){
+                    m_declutterProcessor = new DeclutterProcessor();
+                }
+                //Back to a clean slate
+                m_declutterProcessor.undoDeclutter(m_tracks, m_symbols, m_text, m_lines);
+                //m_groupBounds.clear();
+                repaint();
+            }
+        });
+    }
+    
     /**
      * Enable or disable decluttering.
      * @param enabled True to enable declutter, false to disable.
@@ -150,29 +177,10 @@ public class Chart extends Component {
     public void setDeclutterEnabled(boolean enabled){
         m_declutterEnabled = enabled;
         if (enabled){
-            m_singleThreadExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    performDeclutter();
-                }
-            });
-            
+            handleDeclutter();
             System.out.println("Declutter enabled!");
         } else {
-            m_singleThreadExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    // Initialize a processor if necessary.
-                    if (m_declutterProcessor == null){
-                        m_declutterProcessor = new DeclutterProcessor();
-                    }
-                    //Back to a clean slate
-                    m_declutterProcessor.undoDeclutter(m_tracks, m_symbols, m_text, m_lines);
-                    m_groupBounds.clear();
-                }
-            });
-
-            
+            handleUndoDeclutter();
             System.out.println("Declutter disabled!");
         }
         repaint();
@@ -222,24 +230,23 @@ public class Chart extends Component {
 
     
     private void performDeclutter() {
-        // Initialize a processor if necessary.
-        if (m_declutterProcessor == null){
-            m_declutterProcessor = new DeclutterProcessor();
-        }
-        
         //Start from a clean slate
         m_declutterProcessor.undoDeclutter(m_tracks, m_symbols, m_text, m_lines);
+        
 
         m_declutterProcessor.setShuffle(m_shuffleEnabled);
         Collection<ClutterGroup> groups = m_declutterProcessor.performDeclutter(m_tracks, m_symbols, m_text, m_lines);
 
         //Generate box for each group
-        for (ClutterGroup group : groups){
-            Rectangle groupRect = group.calculateGroupRect(true);
-            Coordinates coords = new Coordinates(groupRect.x, groupRect.y);
-            RenderableBox box = new RenderableBox(coords, groupRect.width, groupRect.height);
-            m_groupBounds.add(box);
-        }
+        m_groupBounds.clear();
+//        for (ClutterGroup group : groups){
+//            Rectangle groupRect = group.calculateGroupRect(true);
+//            Coordinates coords = new Coordinates(groupRect.x, groupRect.y);
+//            RenderableBox box = new RenderableBox(coords, groupRect.width, groupRect.height);
+//            m_groupBounds.add(box);
+//        }
+        
+        m_groupBounds.addAll(m_declutterProcessor.getOriginalGroupBounds());
         
         repaint();
     }
@@ -259,8 +266,16 @@ public class Chart extends Component {
         // Draw Background
         g2d.setColor(m_oceanColor);
         g2d.fillRect(0, 0, getSize().width, getSize().height);
-
  
+        //Draw marker lines
+        g2d.setColor(Color.BLACK);
+        for(int i = 0; i < this.getWidth(); i+=100) { //draw verticals
+            g2d.drawLine(i, 0, i, this.getHeight());
+        }
+        for(int i = 0; i < this.getHeight(); i+=100) { //draw horizontals
+            g2d.drawLine(0, i, this.getWidth(), i);
+        }
+        
         //DRAW STUFF FOR TRACKS ============================
         
         // Draw Labels, symbols, text
@@ -279,16 +294,15 @@ public class Chart extends Component {
         if(m_drawClutterGroupBoundaries) {
             for(RenderableBox box : m_groupBounds) {
                 box.render(g2d);
+                g2d.fillRect(box.getCenter().getX() - 1, box.getCenter().getY() - 1, 3, 3);
+            }
+            for(RenderableBox box : m_declutterProcessor.getFinalGroupBounds()) {
+                box.render(g2d);
+                g2d.fillRect(box.getCenter().getX() - 1, box.getCenter().getY() - 1, 3, 3);
             }
         }
         
-        g2d.setColor(Color.MAGENTA);
-        for(int i = 0; i < this.getWidth(); i+=100) { //draw verticals
-            g2d.drawLine(i, 0, i, this.getHeight());
-        }
-        for(int i = 0; i < this.getHeight(); i+=100) { //draw horizontals
-            g2d.drawLine(0, i, this.getWidth(), i);
-        }
+
     }
     
     void generateTracks(int quantity, int regionWidth, int regionHeight) {
@@ -297,9 +311,9 @@ public class Chart extends Component {
             addTrack(Track.newRandomTrack(0, regionWidth, 0, regionHeight));
         }
         if(m_declutterEnabled) {
-            performDeclutter(); //Declutters and then calls repaint
+            handleDeclutter(); //Declutters and then calls repaint
         } else {
-            repaint();
+            handleUndoDeclutter();
         }
     }
 }

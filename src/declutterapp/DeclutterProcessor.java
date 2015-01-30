@@ -3,10 +3,11 @@ package declutterapp;
 import declutterapp.data.Coordinates;
 import declutterapp.data.Track;
 import declutterapp.data.clutter.ClutterGroup;
-import declutterapp.data.rendering.Renderable;
+import declutterapp.data.rendering.RenderableBox;
 import declutterapp.data.rendering.RenderableLine;
 import declutterapp.data.rendering.RenderableSymbol;
 import declutterapp.data.rendering.RenderableText;
+import java.awt.Color;
 import java.awt.Rectangle;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
@@ -29,8 +30,14 @@ public class DeclutterProcessor {
     
     private boolean shuffle = false;
     
+    private Set<RenderableBox> m_originalGroupBounds;
+    
+    private Set<RenderableBox> m_finalGroupBounds;
+    
 
     public DeclutterProcessor(){
+        m_originalGroupBounds = new HashSet<>();
+        m_finalGroupBounds = new HashSet<>();
     }
 
     /**
@@ -42,6 +49,9 @@ public class DeclutterProcessor {
      * @return The collection of cluttergroups detected.
      */
     public Collection<ClutterGroup> performDeclutter(Collection<Track> tracks, Map<UUID, RenderableSymbol> symbols, Map<UUID, RenderableText> texts, Set<RenderableLine> lines){
+        
+        m_originalGroupBounds.clear();
+        m_finalGroupBounds.clear();
         
         // Identify ClutterGroups
         Set<Track> trackSet = new HashSet<>(tracks);
@@ -56,8 +66,16 @@ public class DeclutterProcessor {
         temp.addAll(mergeGroups(clutterGroups));
         clutterGroups.clear();
         clutterGroups.addAll(temp);
+        
+        for(ClutterGroup g : clutterGroups) {
+            m_originalGroupBounds.add(RenderableBox.getBoxFromRectangle(g.calculateGroupRect(true), Color.MAGENTA));
+        }
 
         eliminateOverlap(clutterGroups, tracks, symbols, texts, lines);
+        
+        for(ClutterGroup g : clutterGroups) {
+            m_finalGroupBounds.add(RenderableBox.getBoxFromRectangle(g.calculateGroupRect(true), Color.CYAN));
+        }
         
         return clutterGroups;
     }
@@ -128,7 +146,7 @@ public class DeclutterProcessor {
                     combinedGroup = new ClutterGroup();
                     combinedGroup.addTracks(tracks, symbols, texts);
 
-                    //break;
+                    break;
                 }
             }
 
@@ -197,20 +215,8 @@ public class DeclutterProcessor {
         
         
         //Store all moveables and immoveables
-        List<Renderable> allMoveableRenderables = new ArrayList<>();
-        List<Renderable> allImmoveableRenderables = new ArrayList<>();
         Map<Rectangle, ClutterGroup> clutterGroupBoundaries = new HashMap<>();
-        allMoveableRenderables.addAll(texts.values());
-        allImmoveableRenderables.addAll(symbols.values());
-        
-        //Turn single group labels into immoveables
-        for (ClutterGroup group : groups) {
-            if(group.getSize() == 1) {
-                allMoveableRenderables.removeAll(group.getTexts().values());
-                allImmoveableRenderables.addAll(group.getTexts().values());
-            }
-        }
-        
+      
         //Expand out label positions for each track's text
         for (ClutterGroup group : groups) {
             Set<Track> groupTracks = group.getTracks(); //Get Tracks in this group
@@ -290,5 +296,13 @@ public class DeclutterProcessor {
 
     public void setShuffle(boolean shuffle) {
         this.shuffle = shuffle;
+    }
+    
+    public Set<RenderableBox> getOriginalGroupBounds() {
+        return m_originalGroupBounds;
+    }
+    
+    public Set<RenderableBox> getFinalGroupBounds() {
+        return m_finalGroupBounds;
     }
 }

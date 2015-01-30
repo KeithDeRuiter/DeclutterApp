@@ -48,6 +48,7 @@ public abstract class Renderable {
      */
     public abstract void render(Graphics2D g2d);
     
+    
     @Override
     public String toString() {
         return "(" + getBounds().x + ", " + getBounds().y + ")  " + getBounds().width + " x " + getBounds().height;

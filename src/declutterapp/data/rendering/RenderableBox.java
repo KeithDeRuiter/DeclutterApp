@@ -15,11 +15,11 @@ public class RenderableBox extends Renderable {
     private int m_width;
     private int m_height;
     
-    public RenderableBox(Coordinates center, int width, int height) {
-        this(Color.BLACK, center, width, height);
+    public RenderableBox(Coordinates topLeft, int width, int height) {
+        this(topLeft, width, height, Color.BLACK);
     }
     
-    public RenderableBox(Color color, Coordinates topLeft, int width, int height){
+    public RenderableBox(Coordinates topLeft, int width, int height, Color color){
         super(color);
         m_topLeft = topLeft;
         m_width = width;
@@ -27,11 +27,15 @@ public class RenderableBox extends Renderable {
     }
     
     public Coordinates getCenter() {
-        return new Coordinates(m_topLeft.getX() - (m_width / 2), m_topLeft.getY() - (m_height / 2));
+        return new Coordinates(m_topLeft.getX() + (m_width / 2), m_topLeft.getY() + (m_height / 2));
     }
     
     public static RenderableBox getBoxFromRectangle(Rectangle r) {
-        return new RenderableBox(new Coordinates(r.x, r.y), r.width, r.height);
+        return RenderableBox.getBoxFromRectangle(r, Color.BLACK);
+    }
+    
+    public static RenderableBox getBoxFromRectangle(Rectangle r, Color color) {
+        return new RenderableBox(new Coordinates(r.x, r.y), r.width, r.height, color);
     }
     
     @Override
