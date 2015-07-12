@@ -12,10 +12,10 @@ import java.awt.Color;
  * @author Keith
  */
 public enum HostilityLevel {
-    ALLY("Ally", Color.GREEN),
+    ALLY("Ally", new Color(100, 255, 100)),
     //NEUTRAL("Neutral", Color.BLUE),
-    CIVILIAN("Civilian", Color.BLUE.darker()),
-    ENEMY("Enemy", Color.RED.darker());
+    CIVILIAN("Civilian", new Color(100, 100, 255)),
+    ENEMY("Enemy", new Color(255, 100, 100));
     
     
     

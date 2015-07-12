@@ -1,6 +1,5 @@
 package declutterapp;
 
-import declutterapp.data.Coordinates;
 import declutterapp.data.Track;
 import declutterapp.data.TrackRenderableConverter;
 import declutterapp.data.clutter.ClutterGroup;
@@ -14,7 +13,6 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.Collection;
@@ -46,7 +44,7 @@ public class Chart extends Component {
 
     private TrackRenderableConverter m_renderableConverter;
 
-    private Color m_oceanColor = new Color(150, 200, 255);
+    private Color m_oceanColor = Color.BLACK;
 
     private static final Dimension DEFAULT_DIM = new Dimension(800, 600);
 
@@ -268,7 +266,7 @@ public class Chart extends Component {
         g2d.fillRect(0, 0, getSize().width, getSize().height);
  
         //Draw marker lines
-        g2d.setColor(Color.BLACK);
+        g2d.setColor(Color.GRAY);
         for(int i = 0; i < this.getWidth(); i+=100) { //draw verticals
             g2d.drawLine(i, 0, i, this.getHeight());
         }
